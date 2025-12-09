@@ -1,11 +1,8 @@
-
 # RPC WHO Program – Local & Remote User Info Service
 
 This project provides:
 - A local WHO tool that reads active login sessions from `/var/run/utmp`.
 - A remote WHO system using ONC RPC, where a client requests login information from a remote server.
-
-
 
 ---
 
@@ -14,14 +11,14 @@ This project provides:
 **File:** `src/local_who.c`  
 Reads UTMP records using `setutent()`, `getutent()`, and `endutent()`.
 
-**Compile**
+### Compile
 ```bash
 gcc -Wall src/local_who.c -o local_who
 Run
 ./local_who
 ________________________________________
-## Part B — RPC WHO
-Includes:
+Part B — RPC WHO
+Includes
 remote.x
 remote_server.c
 remote_client.c
@@ -49,7 +46,7 @@ o	remote_xdr.c
 ________________________________________
 2. Implement the Server
 •	Create remote_server.c
-•	Implement the function:
+•	Implement:
 •	user_info *get_users_1()
 ________________________________________
 3. Implement the Client
@@ -67,11 +64,10 @@ ________________________________________
 sudo systemctl start rpcbind
 ________________________________________
 6. Run the programs
-Terminal 1 (server):
+Server (Terminal 1)
 ./remote_server
-Terminal 2 (client):
+Client (Terminal 2)
 ./remote_client localhost
 
--
-.
+--
 
