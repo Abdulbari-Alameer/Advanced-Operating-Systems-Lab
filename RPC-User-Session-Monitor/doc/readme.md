@@ -31,12 +31,42 @@ sudo apt-get update
 sudo apt-get install -y build-essential libtirpc-dev rpcbind rpcsvc-proto
 Generate RPC files
 rpcgen remote.x
-**Compile**
-gcc -Wall -I/usr/include/tirpc -o remote_server remote_server.c remote_svc.c remote_xdr.c -ltirpc
-gcc -Wall -I/usr/include/tirpc -o remote_client remote_client.c remote_clnt.c remote_xdr.c -ltirpc
-**Run**
-Server:
+**RPC Implementation**
+
+1. Create RPC interface (remote.x)
+•	Define the RPC program and structure.
+•	Run:
+•	rpcgen remote.x
+•	This generates:
+o	remote.h
+o	remote_clnt.c
+o	remote_svc.c
+o	remote_xdr.c
+________________________________________
+✅ 2. Implement the Server
+•	Create remote_server.c
+•	Implement the function:
+•	user_info *get_users_1()
+•	This is what the client will call.
+________________________________________
+✅ 3. Implement the Client
+•	Create remote_client.c
+•	Create RPC handle using:
+•	clnt = clnt_create(host, REMOTE_PROG, REMOTE_VERS, "tcp");
+•	Call:
+•	GET_USERS_1(NULL, clnt);
+________________________________________
+✅ 4. Compile (Ubuntu 22.04 uses libtirpc)
+gcc -Wall -o remote_server remote_server.c remote_svc.c remote_xdr.c -ltirpc
+gcc -Wall -o remote_client remote_client.c remote_clnt.c remote_xdr.c -ltirpc
+________________________________________
+✅ 5. Start rpcbind
+sudo systemctl start rpcbind
+________________________________________
+✅ 6. Run the programs
+Terminal 1 (server):
 ./remote_server
-Client:
+Terminal 2 (client):
 ./remote_client localhost
+
 
