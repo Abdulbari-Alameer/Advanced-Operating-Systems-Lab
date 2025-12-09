@@ -13,334 +13,338 @@ This project implements the Unix `who` command functionality in two ways:
 
 The project showcases distributed computing concepts, inter-process communication, and system programming in C.
 
-##  Features
 
-- **Local User Monitoring**: Direct access to system utmp database
-- **Remote User Monitoring**: RPC-based distributed architecture
-- **Real-time Information**: Displays current logged-in users with:
-  - Username
-  - Terminal (TTY)
-  - Login time
-  - Remote host (if applicable)
-- **Cross-platform Support**: Works on Ubuntu 22.04 LTS and compatible Linux distributions
-- **Lightweight**: Minimal dependencies and resource usage
+# Complete Execution Guide
 
+## Prerequisites
 
-
-##  Prerequisites
-
-### System Requirements
-- **OS**: Ubuntu 22.04 LTS or compatible Linux distribution
-- **RAM**: Minimum 512MB
-- **Disk Space**: 100MB free space
-- **Processor**: Any modern x86/x64 processor
-
-### Software Requirements
-- GCC Compiler (version 7.0 or higher)
-- GNU Make
-- RPC libraries (libtirpc-dev)
-- rpcbind service
-- rpcsvc-proto
-
-### Verify Prerequisites
-
+1. **Install required packages** (Ubuntu/Debian):
 ```bash
-# Check Ubuntu version
-lsb_release -a
-
-# Check GCC
-gcc --version
-
-# Check if rpcgen is available
-which rpcgen
-```
-
-##  Installation
-
-### Step 1: Clone the Repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/rpc-who-command.git
-cd rpc-who-command
-```
-
-### Step 2: Install Dependencies
-
-```bash
-# Update package list
 sudo apt-get update
-
-# Install required packages
-sudo apt-get install -y build-essential libtirpc-dev rpcbind rpcsvc-proto
+sudo apt-get install rpcbind libc-dev build-essential
 ```
 
-Or use the automated setup script:
-
+2. **Start RPC port mapper**:
 ```bash
-chmod +x scripts/setup.sh
-./scripts/setup.sh
-```
-
-### Step 3: Compile the Programs
-
-```bash
-# Make compile script executable
-chmod +x scripts/compile.sh
-
-# Run compilation
-./scripts/compile.sh
-```
-
-Or compile manually:
-
-```bash
-# Compile local who command
-gcc -Wall src/local/local_who.c -o local_who
-
-# Generate RPC files
-cd src/rpc && rpcgen remote.x && cd ../..
-
-# Compile RPC server
-gcc -Wall -I/usr/include/tirpc -o remote_server \
-    src/rpc/remote_server.c \
-    src/rpc/remote_svc.c \
-    src/rpc/remote_xdr.c \
-    -ltirpc
-
-# Compile RPC client
-gcc -Wall -I/usr/include/tirpc -o remote_client \
-    src/rpc/remote_client.c \
-    src/rpc/remote_clnt.c \
-    src/rpc/remote_xdr.c \
-    -ltirpc
-```
-
-### Step 4: Start rpcbind Service
-
-```bash
-# Start the service
+sudo service rpcbind start
+# or
 sudo systemctl start rpcbind
-
-# Enable on boot
-sudo systemctl enable rpcbind
-
-# Verify it's running
-sudo systemctl status rpcbind
 ```
 
-##  Usage
+## Part (a): Local Who Command
 
-### Part A: Local Who Command
+### Step 1: Create and Compile
+```bash
+# Save the code as local_who.c
+gcc -o local_who local_who.c
 
-Display locally logged-in users:
+# Or use make
+make local_who
+```
 
+### Step 2: Run
 ```bash
 ./local_who
 ```
 
-**Sample Output:**
+### Expected Output:
 ```
-===========================================
-Local WHO Command - Part A
-===========================================
-
-Reading from: /var/run/utmp
-
-USER         TTY          LOGIN TIME           HOST            
+Currently logged-in users:
+USER       TTY        FROM             LOGIN@
 ================================================================
-john         pts/0        2024-12-09 14:30     192.168.1.100
-alice        pts/1        2024-12-09 15:45     -
-
-Total users logged in: 2
+john       pts/0      192.168.1.100    2024-01-15 10:30
+alice      tty1       :0               2024-01-15 09:15
 ```
 
-### Part B: RPC Implementation
+---
 
-#### Terminal 1 - Start the Server
+## Part (b): RPC Implementation
 
+### Step 1: Create All Files
+Save the following files in the same directory:
+- `remote.x`
+- `remote_server.c`
+- `remote_client.c`
+- `Makefile`
+
+### Step 2: Generate RPC Stubs
+```bash
+rpcgen remote.x
+```
+
+This creates:
+- `remote.h` - Header file
+- `remote_clnt.c` - Client stub
+- `remote_svc.c` - Server stub
+- `remote_xdr.c` - XDR serialization routines
+
+### Step 3: Compile Programs
+```bash
+# Compile server
+gcc -o remote_server remote_server.c remote_svc.c remote_xdr.c -lnsl
+
+# Compile client
+gcc -o remote_client remote_client.c remote_clnt.c remote_xdr.c -lnsl
+
+# Or use make
+make all
+```
+
+### Step 4: Run RPC Programs
+
+**Terminal 1 (Server):**
 ```bash
 ./remote_server
 ```
 
-The server will start and wait for client connections.
+Server output:
+```
+Server: Received request for logged-in users
+Server: Sending information for 2 user(s)
+```
 
-#### Terminal 2 - Run the Client
-
+**Terminal 2 (Client):**
 ```bash
-# Connect to localhost
-./remote_client localhost
+# For structured output
+./remote_client localhost 1
 
-# Or connect to a remote server
-./remote_client 192.168.1.50
+# For string output
+./remote_client localhost 2
+
+# For remote machine
+./remote_client 192.168.1.50 1
 ```
 
-**Sample Output:**
+Client output:
 ```
-===========================================
-RPC Client - Part B
-===========================================
+Connecting to RPC server on host: localhost
+Successfully connected to server
 
-Attempting to connect to RPC server at localhost...
-✓ Connected successfully!
+Calling remote procedure: GET_LOGGED_USERS
+==================================================
+Received information for 2 user(s):
 
-Calling remote procedure GET_USERS...
-
-===========================================
-Remote Server Response:
-===========================================
-
-USER         TTY          LOGIN TIME           HOST            
+USER       TTY        FROM             LOGIN@
 ================================================================
-john         pts/0        2024-12-09 14:30     192.168.1.100
-alice        pts/1        2024-12-09 15:45     -
+john       pts/0      192.168.1.100    2024-01-15 10:30
+alice      tty1       :0               2024-01-15 09:15
 
-Total users: 2
-
-===========================================
-✓ Connection closed.
+Client finished successfully
 ```
 
-### Testing with Multiple Users
+---
 
-```bash
-# Open multiple SSH sessions or terminals
-# Then run the client to see all active users
+## Understanding the RPC Flow
 
-./remote_client localhost
+### 1. **Server Startup**
+```
+remote_server starts
+  ↓
+Registers with portmapper (rpcbind)
+  ↓
+Listens for incoming RPC requests
+  ↓
+Waits for client connections
 ```
 
-
-
-##  Technical Details
-
-### Technologies Used
-
-- **Language**: C (C99 standard)
-- **RPC Protocol**: Sun RPC (ONC RPC)
-- **Libraries**: 
-  - libtirpc (Transport Independent RPC)
-  - utmp.h (User accounting database)
-  - time.h (Time formatting)
-- **Build Tools**: GCC, rpcgen
-
-### How It Works
-
-#### Part A: Local Implementation
-1. Opens `/var/run/utmp` database using `setutent()`
-2. Iterates through entries using `getutent()`
-3. Filters `USER_PROCESS` type entries
-4. Formats and displays user information
-5. Closes database using `endutent()`
-
-#### Part B: RPC Implementation
-
-**Server Side:**
-1. Defines RPC interface in `remote.x`
-2. Generates stub code using `rpcgen`
-3. Implements `get_users_1_svc()` function
-4. Registers with portmapper (rpcbind)
-5. Waits for client requests
-
-**Client Side:**
-1. Creates RPC client handle using `clnt_create()`
-2. Calls remote procedure `get_users_1()`
-3. Receives and displays results
-4. Destroys client handle
-
-### RPC Interface Definition
-
-```c
-program REMOTE_PROG {
-    version REMOTE_VERS {
-        user_info GET_USERS(void) = 1;
-    } = 1;
-} = 0x20000001;
+### 2. **Client Request**
+```
+remote_client starts
+  ↓
+clnt_create() - Creates CLIENT handle
+  ↓
+Contacts portmapper to find server port
+  ↓
+Establishes connection to server
+  ↓
+Calls remote procedure
+  ↓
+Receives and displays result
+  ↓
+clnt_destroy() - Cleans up
 ```
 
-- **Program Number**: 0x20000001
-- **Version Number**: 1
-- **Procedure Number**: 1 (GET_USERS)
+### 3. **Server Processing**
+```
+Server receives RPC request
+  ↓
+Calls get_logged_users_1_svc()
+  ↓
+Opens /var/run/utmp
+  ↓
+Reads user entries (struct utmp)
+  ↓
+Filters USER_PROCESS type entries
+  ↓
+Builds result structure
+  ↓
+Returns result to client (via XDR)
+```
 
-##  Troubleshooting
+---
 
-### Common Issues and Solutions
+## Key Concepts Explained
 
-#### 1. "Cannot find utmp file" Error
+### 1. **struct utmp Structure**
+Located in `<utmp.h>`, contains:
+- `ut_type`: Entry type (USER_PROCESS, INIT_PROCESS, etc.)
+- `ut_user`: Username (login name)
+- `ut_line`: Terminal device name
+- `ut_host`: Remote hostname
+- `ut_time`: Login timestamp
+- `ut_pid`: Process ID
 
+### 2. **/var/run/utmp File**
+- Binary file, not human-readable
+- Records current login sessions
+- Updated by login, init, and getty
+- Read using fopen() in binary mode ("rb")
+
+### 3. **RPC Components**
+
+**remote.x (Interface Definition):**
+- Defines data structures
+- Declares remote procedures
+- Specifies program and version numbers
+
+**Client Stub (remote_clnt.c):**
+- Generated by rpcgen
+- Marshals arguments
+- Sends request to server
+- Unmarshals results
+
+**Server Stub (remote_svc.c):**
+- Generated by rpcgen
+- Receives requests
+- Unmarshals arguments
+- Calls actual procedure
+- Marshals results
+
+**XDR Routines (remote_xdr.c):**
+- Serialization/deserialization
+- Platform-independent data representation
+
+### 4. **Important RPC Functions**
+
+**clnt_create():**
+- Creates client handle
+- Parameters: host, program, version, protocol
+- Returns CLIENT* or NULL
+
+**clnt_pcreateerror():**
+- Prints why clnt_create() failed
+- Includes network errors, server not found, etc.
+
+**clnt_perror():**
+- Prints RPC call errors
+- Includes timeout, version mismatch, etc.
+
+**clnt_destroy():**
+- Frees CLIENT handle
+- Closes connections
+- Must be called before exit
+
+---
+
+## Troubleshooting
+
+### Problem 1: "Cannot register service"
 **Solution:**
 ```bash
-# Check if file exists
-ls -la /var/run/utmp
+# Check if rpcbind is running
+sudo service rpcbind status
 
-# If not, create it
-sudo touch /var/run/utmp
+# Start if not running
+sudo service rpcbind start
+
+# Check registered services
+rpcinfo -p
 ```
 
-#### 2. "rpcbind not running" Error
+### Problem 2: "RPC: Program not registered"
+**Solution:**
+- Ensure server is running before starting client
+- Check firewall rules
+- Verify program number in remote.x
 
+### Problem 3: Permission denied reading /var/run/utmp
 **Solution:**
 ```bash
-# Start rpcbind
-sudo systemctl start rpcbind
-sudo systemctl enable rpcbind
-
-# Check status
-sudo systemctl status rpcbind
+# Run with appropriate permissions
+sudo ./local_who
+# or
+sudo ./remote_server
 ```
 
-#### 3. "Connection refused" Error
-
+### Problem 4: Compilation errors with -lnsl
 **Solution:**
 ```bash
-# Check if server is running
-ps aux | grep remote_server
+# On newer systems, try without -lnsl
+gcc -o remote_server remote_server.c remote_svc.c remote_xdr.c
 
-# Check RPC services
-rpcinfo -p localhost
-
-# Restart server
-./remote_server
+# Or install libc6-dev
+sudo apt-get install libc6-dev
 ```
 
-#### 4. Compilation Errors
+---
 
-**Solution:**
-```bash
-# Reinstall dependencies
-sudo apt-get install --reinstall libtirpc-dev
+## Testing Tips
 
-# Clean and rebuild
-rm -f remote_server remote_client local_who
-rm -f src/rpc/remote.h src/rpc/remote_*.c
-./scripts/compile.sh
-```
+1. **Test locally first:**
+   ```bash
+   ./remote_client localhost 1
+   ```
 
-#### 5. No Users Showing (WSL/Virtual Environment)
+2. **Test across network:**
+   ```bash
+   # On server machine
+   ./remote_server
+   
+   # On client machine
+   ./remote_client <server-ip> 1
+   ```
 
-This is normal in WSL or some virtual environments. The utmp database may be empty. Try:
+3. **Check server logs:**
+   Server prints messages for each request
 
-```bash
-# Compare with system commands
-who
-w
-users
+4. **Use both procedures:**
+   Test both procedure 1 (structured) and 2 (string)
 
-# These may also show nothing, which is expected
-```
+---
 
-### Getting Help
+## Additional Notes
 
-If you encounter issues:
+### Security Considerations
+- RPC communication is unencrypted
+- No authentication by default
+- Suitable for trusted networks only
+- For production, consider:
+  - RPCSEC_GSS for authentication
+  - SSH tunneling for encryption
+  - Firewall rules to restrict access
 
-1. Check the [INSTALLATION.md](docs/INSTALLATION.md) guide
-2. Review [USAGE.md](docs/USAGE.md) for correct usage
-3. Search existing GitHub issues
-4. Create a new issue with:
-   - Your OS version
-   - Error messages
-   - Steps to reproduce
+### Performance
+- UDP: Faster, no connection overhead
+- TCP: Reliable, better for large data
+- Consider timeout settings for slow networks
 
+### Alternatives to RPC
+- REST APIs (HTTP-based)
+- gRPC (Google's RPC framework)
+- Message queues (RabbitMQ, Kafka)
+- WebSockets for real-time communication
 
+---
 
-```
+## Summary
+
+**Part (a):** Simple C program reads `/var/run/utmp` directly using `fopen()` and `fread()` to display logged-in users.
+
+**Part (b):** Extends functionality using Sun RPC:
+- Client triggers request remotely
+- Server processes request and reads utmp
+- Communication handled by RPC framework
+- Results serialized via XDR and sent to client
+
+Both implementations achieve the same goal of listing logged-in users, but the RPC version enables remote access across network.
 
