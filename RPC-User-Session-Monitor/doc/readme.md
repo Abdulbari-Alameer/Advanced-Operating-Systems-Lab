@@ -5,12 +5,7 @@ This project provides:
 - A local WHO tool that reads active login sessions from `/var/run/utmp`.
 - A remote WHO system using ONC RPC, where a client requests login information from a remote server.
 
----
 
-## Project Structure
-Advanced-Operating-Systems-Lab/
-│── src/ # All C source files (local_who + RPC)
-│── docs/ # readme
 
 ---
 
@@ -25,7 +20,7 @@ gcc -Wall src/local_who.c -o local_who
 Run
 ./local_who
 ________________________________________
-Part B — RPC WHO
+## Part B — RPC WHO
 Includes:
 remote.x
 remote_server.c
